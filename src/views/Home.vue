@@ -45,7 +45,11 @@
             <div class="card">
             <div class="card-content">
               <div class="content">
-                Seu arquivo está pronto para ser usado, clique em próximo.
+                Seu arquivo está pronto para ser usado, digite o mês/ano para continuar.
+                <input class="input" type="text" v-mask="'##/####'" placeholder="mês/ano" v-model="InvoiceDate" >
+                <div v-if="error != undefined">
+                  <small style="color: red">{{error}}</small>
+                </div>
               </div>
             </div>
           </div>
@@ -56,9 +60,9 @@
             </div>
             
             <div class="column is-9 is-offset-4">
-              <router-link :to="{name: 'ViewInvoice', params:{inv: this.FileIndex, date: this.DateInvoice}}">
-                <button class="button is-success">Próximo</button>
-              </router-link>
+              
+              <button @click="Process()" class="button is-success">Próximo</button>
+              
             </div>
             
           </footer>
@@ -68,8 +72,7 @@
 </template>
 
 <script>
-import axios from 'axios'
-
+import api from '../services/api'
 export default {
   name: 'Home',
   components: {
@@ -79,10 +82,9 @@ export default {
     return{
       file: "",
       error: undefined,
-      errorMessage: '',
       ShowModal: false,
       FileIndex: -1,
-      DateInvoice: ''
+      InvoiceDate: ''
     }
   },
   methods: {
@@ -95,48 +97,20 @@ export default {
       const formData = new FormData()
       formData.append('file', this.file)
       try {
-        let req = await axios.post('https://creditcard-h-api.herokuapp.com/upload', formData)
+        await api.post('/upload', formData)
         this.file = ""
         this.error = undefined
         this.ShowModal = true
-
-        //pegar indice do arquivo na lista de arquivos em ./data da API para converter
-        let File = undefined
-        try{
-          let ListFiles = await axios.get('https://creditcard-h-api.herokuapp.com/files')
-          ListFiles = ListFiles.data
-          File = ListFiles.findIndex((file) => file == req.data.file.filename)
-          this.FileIndex = File
-        }
-        catch(err){
-          this.ShowModal = false
-          console.log(err)
-          this.error = "Houve um erro interno"
-          this.file = ""
-        }
-
-        //pegar nome da fatura para servir como data
-        let FileName = req.data.file.filename
-        console.log(FileName)
-        let month = FileName.split('-')[2].split('.')[0]
-        let year = FileName.split('-')[1]
-        this.DateInvoice = month + '/' + year 
-
-
-
-        let fileType = req.data.file.mimetype
-        if(fileType == "application/vnd.ms-excel"){
-          try{
-            await axios.post('https://creditcard-h-api.herokuapp.com/convert/' + File)
-            console.log('Convertido para json')
-          }
-          catch(err){
-            this.error = err.response.data.err
-            this.file = ""
-          }
-        }
-
+        
       } catch(err) {
+        this.error = err.response.data.err
+        this.file = ""
+      }
+
+      try{
+        await api.post('/convert')
+      }
+      catch(err){
         this.error = err.response.data.err
         this.file = ""
       }
@@ -146,6 +120,18 @@ export default {
     },
     closeModal(){
       this.ShowModal = false
+    },
+    async Process(){
+      try{
+        const result = await api.post('/process', {InvoiceDate: this.InvoiceDate})
+        window.sessionStorage.setItem('ID', result.data.invoice._id)
+        window.sessionStorage.setItem('data', result.data.invoice.InvoiceDate)
+        this.$router.push({name: 'ViewInvoice'})
+      }
+      catch(err){
+        this.error = err.response.data.error
+        this.file = ""
+      }
     }
   }
   

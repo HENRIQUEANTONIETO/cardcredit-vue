@@ -22,14 +22,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="invoice in FullInvoice" :key="invoice.id">
-                                <td>{{invoice.Titulo}}</td>
-                                <td>{{invoice.Categoria}}</td>
-                                <td>{{invoice.Valor}}</td>
+                            <tr v-for="invoice in FullInvoice" :key="invoice.id" @dblclick="showModal(invoice.id)">
+                                <td>{{invoice.titulo}}</td>
+                                <td>{{invoice.categoria}}</td>
+                                <td>{{invoice.valor}}</td>
                                 <td>
-                                    {{invoice.Data.split('-')[2]}}/{{invoice.Data.split('-')[1]}}
+                                    {{invoice.data.split('-')[2]}}/{{invoice.data.split('-')[1]}}
                                 </td>
-                                <td v-if="invoice.Pai === 1">
+                                <td v-if="invoice.pai === 1">
                                     <input type="checkbox" checked @click="MarkDad(invoice.id)">
                                 </td>
                                 <td v-else>
@@ -52,11 +52,33 @@
                         </p>
                     </div>
                 </table>
+
+                <div :class="{modal: true, 'is-active': ShowModal}">
+                    <div class="modal-background"></div>
+                        <div class="modal-card modalE">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title">Tem certeza que deseja exluir?</p>
+                            <button @click="showModal()" class="delete" aria-label="close"></button>
+                        </header>
+                        <footer class="modal-card-foot columns">
+                            <div class="column">
+                            <button @click="showModal()" class="button">Cancelar</button>
+                            </div>
+                            
+                            <div class="column is-6 is-offset-4">
+                            
+                            <button @click="removeInvoice()" class="button is-danger">Excluir</button>
+                            
+                            </div>
+                            
+                        </footer>
+                    </div>
+                </div>
                 
             </div>
 
             <div class="column">
-                <h1 class="title">Fatura de: {{this.$route.params.date}}</h1>
+                <h1 class="title">Fatura de: {{this.data}}</h1>
                 <div class="resume">
                     <small>Valor Pai: </small><small class="value"> R$ {{TotalDad}}</small>
                     <hr>
@@ -71,19 +93,15 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../services/api'
 export default {
     name: 'ViewInvoice',
-    created(){
-        if(this.$route.params.inv == undefined){
+    async created(){
+        await this.UpdateList()
+        if(this.FullInvoice.length <= 0){
+            alert('Este arquivo não tem faturas e não poderá ser utilizado, favor exclui-lo na próxima tela.')
             this.$router.push({name: 'PreviousInvoices'}) 
         }
-        axios.get('https://creditcard-h-api.herokuapp.com/faturas/' + this.$route.params.inv).then(res =>{
-            this.FullInvoice = res.data
-            this.Calculate()
-        }).catch((err) =>{
-            console.log(err)
-        })
     },
     data(){
         return{
@@ -94,16 +112,17 @@ export default {
             error: undefined,
             title: '',
             amount: 0,
+            ShowModal: false,
+            idRemove: -1,
+            ID: window.sessionStorage.getItem('ID'),
+            data: window.sessionStorage.getItem('data')
 
         }
     },
     methods: {
         async MarkDad(id){
             try{
-                await axios.put('https://creditcard-h-api.herokuapp.com/faturas/', {
-                    inv: this.$route.params.inv,
-                    id: id
-                })
+                await api.put('/invoices/' + this.ID + '/' + id)
                 this.Calculate()
             }
             catch(err){
@@ -115,7 +134,7 @@ export default {
 
         async AddDad(){
             try{
-                await axios.post('https://creditcard-h-api.herokuapp.com/faturas/pai/' + this.$route.params.inv, {
+                await api.put('/invoices/' + this.ID, {
                     title: this.title,
                     amount: Number(this.amount)
                 })
@@ -127,24 +146,21 @@ export default {
                 this.amount = 0
             }
             catch(err){
-                this.error = err.response.data.err
+                this.error = err.response.data.error
             }
             
         },
 
         async Calculate(){
-            let Total = await axios.get('https://creditcard-h-api.herokuapp.com/faturas/totalizer/' + this.$route.params.inv)
+            let Total = await api.get('/invoices/totalizer/' + this.ID)
             this.TotalCard = Total.data.TotalCard.toFixed(2)
             this.TotalDad = Total.data.TotalDad.toFixed(2)
             this.TotalMe = Total.data.TotalMe.toFixed(2)
         },
 
         async UpdateList(){
-            if(this.$route.params.inv == undefined){
-            this.$router.push({name: 'PreviousInvoices'}) 
-            }
-            axios.get('https://creditcard-h-api.herokuapp.com/faturas/' + this.$route.params.inv).then(res =>{
-                this.FullInvoice = res.data
+            await api.get('/invoices/' + this.ID).then(res =>{
+                this.FullInvoice = res.data.Invoice
                 this.Calculate()
             }).catch((err) =>{
                 console.log(err)
@@ -152,10 +168,30 @@ export default {
         },
         closeError(){
             this.error = undefined
+        },
+
+        showModal(id){
+            this.ShowModal = !this.ShowModal
+            this.idRemove = id
+        },
+        async removeInvoice(){
+            try{
+                await api.delete('/invoices/' + this.ID + '/'+ this.idRemove)
+                let indexf = this.FullInvoice.findIndex(i => i.id == this.idRemove)
+                this.FullInvoice.splice(indexf, 1)
+                this.Calculate()
+                this.ShowModal = false
+                if(this.FullInvoice.length <= 0){
+                    alert('Este arquivo não tem faturas e não poderá ser utilizado, favor exclui-lo na próxima tela.')
+                    this.$router.push({name: 'PreviousInvoices'}) 
+                }
+            }
+            catch(err){
+                this.error = err.response.data.error
+            }
+           
         }
-        
     }
-    
 }
 
 </script>
@@ -192,5 +228,8 @@ export default {
     padding: 5px;
 }
 
+.modalE{
+    width: 450px;
+}
 
 </style>
