@@ -13,15 +13,24 @@
           </article>
         </div>
 
-        <form @submit.prevent="sendFile" enctype="multipart/form-data" class="column is-half is-offset-one-quarter">
-          <div class="file is-centered is-boxed is-success has-name">
+        <form @submit.prevent="sendFile"
+              enctype="multipart/form-data"
+              class="column is-half is-offset-one-quarter"
+              @dragover.prevent="onDragOver"
+              @dragleave.prevent="onDragLeave"
+              @drop.prevent="onDrop"
+        >
+          <div 
+            class="file is-centered is-boxed is-success has-name"
+            :class="{ 'drag-over': isDragOver }"
+          >
             <label class="file-label">
               <input type="file" ref="file" @change="selectFile" class="file-input"/>
-              <span class="file-cta">
+              <span class="file-cta" >
                 <span class="file-icon">
                   <i class="fas fa-upload"></i>
                 </span>
-                <span class="file-label"> Escolha um arquivo...</span>
+                <span class="file-label"> Escolha um arquivo ou <br> o arraste aqui</span>
               </span>
               <span v-if="file" class="file-name">{{file.name}}</span>
               <div class="field mt-4">
@@ -84,13 +93,26 @@ export default {
       error: undefined,
       ShowModal: false,
       FileIndex: -1,
-      InvoiceDate: ''
+      InvoiceDate: '',
+      isDragOver: false,
     }
   },
   methods: {
     selectFile() {
       const file = this.$refs.file.files[0]
       this.file = file
+    },
+    onDrop(event) {
+      this.isDragOver = false;
+      const file = event.dataTransfer.files;
+      this.file = file[0]
+    },
+
+    onDragOver() {
+      this.isDragOver = true;
+    },
+    onDragLeave() {
+      this.isDragOver = false;
     },
 
      async sendFile() {
@@ -145,6 +167,11 @@ export default {
 
 .file-label{
   color: white;
+}
+
+.drag-over {
+  background: rgba(0, 0, 255, 0.301);
+  border: 1px solid rgba(0, 0, 255, 0.301);
 }
 </style>
 

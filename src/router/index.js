@@ -21,7 +21,7 @@ const routes = [
     path: '/previousinvoices',
     name: 'PreviousInvoices',
     component: PreviousInvoices
-  },
+  }
 ]
 
 const router = new VueRouter({
