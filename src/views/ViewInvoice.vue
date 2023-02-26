@@ -11,7 +11,7 @@
         <div class="columns mt-5">
             <div class="column is-two-thirds">
                 <table class="table is-bordered container is-striped">
-                    <div style="height: 70vh; overflow: auto">
+                    <div class="table-invoice">
                         <thead>
                             <tr > 
                                 <th>Título</th>
@@ -115,8 +115,8 @@ export default {
             ShowModal: false,
             idRemove: -1,
             ID: window.sessionStorage.getItem('ID'),
-            data: window.sessionStorage.getItem('data')
-
+            data: window.sessionStorage.getItem('data'),
+            crescente: false 
         }
     },
     methods: {
@@ -189,7 +189,22 @@ export default {
             catch(err){
                 this.error = err.response.data.error
             }
-           
+        },
+        sort(){
+            if (!this.crescente) {
+                this.crescente = true 
+                this.FullInvoice.sort(function(a,b) {   
+                    return a.titulo.toUpperCase() < b.titulo.toUpperCase() ? -1
+                        : a.titulo.toUpperCase() > b.titulo.toUpperCase() ? 1 : 0;
+                    });
+                return    
+            }
+
+            this.FullInvoice.sort(function(a,b) {
+                return a.titulo.toUpperCase() > b.titulo.toUpperCase() ? -1
+                     : a.titulo.toUpperCase() < b.titulo.toUpperCase() ? 1 : 0;
+                });
+            this.crescente = false
         }
     }
 }
@@ -208,6 +223,14 @@ export default {
 
 .table{
     padding: 0 5px;
+}
+
+thead th{
+    cursor: pointer;
+}
+
+thead th:hover{ 
+    color: #3298dc;
 }
 
 .value{
@@ -232,4 +255,31 @@ export default {
     width: 450px;
 }
 
+.table-invoice{
+    height: 70vh; 
+    overflow: auto
+}
+
+/* region overflow */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px grey; 
+  border-radius: 5px;
+}
+
+
+::-webkit-scrollbar-thumb {
+  background: #3298dc; 
+  border-radius: 5px;
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(65, 65, 245); 
+}
+
+/* fim overflow */
 </style>
